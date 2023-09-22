@@ -69,17 +69,19 @@ class CGIengine:
     def rasterizeLine(self, x0, y0, x1, y1, r, g, b):
         dy = y1 - y0
         dx = x1 - x0
+        # when slope is 0
         if dy == 0:
             x, y = x0, y0
             for x_cod in range(x0, x1):
                 self.win.set_pixel(x_cod, y, r, g, b)
+        # when slope is infinite
         elif dx == 0:
             x, y = x0, y0
             for y_cod in range(y1, y0):
                 self.win.set_pixel(x, y_cod, r, g, b)
-        # elif dy == dx:
-        #     pass
+        # when slope is positive
         elif dy > 0 and dx > 0 or dy < 0 and dx < 0:
+            # change start and end points for x and y-axis
             if y0 > y1:
                 ystart, yend = y1, y0
             else:
@@ -89,6 +91,7 @@ class CGIengine:
                 xstart, xend = x1, x0
             else:
                 xstart, xend = x0, x1
+            # initiliaze x and y for plotting
             x, y = xstart, ystart
             if 0 < dy / dx <= 1:
                 d = (2 * dy) - dx
@@ -114,41 +117,40 @@ class CGIengine:
                     else:
                         x += 1
                         d -= (2 * (dx - dy))
-        # else:
-        #     if y0 > y1:
-        #         ystart, yend = y1, y0
-        #     else:
-        #         ystart, yend = y0, y1
-        #
-        #     if x0 > x1:
-        #         xstart, xend = x1, x0
-        #     else:
-        #         xstart, xend = x0, x1
-        #     x, y = xstart, ystart
-        #     if 0 > dy/dx >= -1:
-        #         d = (2 * dy) + dx
-        #         for x_cod in range(xstart, xend):
-        #             self.win.set_pixel(x_cod, y, r, g, b)
-        #             if d <= 0:
-        #                 y -= 1
-        #                 d += (2 * (dy - dx))
-        #             else:
-        #                 d += (2 * dy)
-        #     else:
-        #         d = (2 * dx) + dy
-        #         for y_cod in range(ystart, yend):
-        #             self.win.set_pixel(x, y_cod, r, g, b)
-        #             if d <= 0:
-        #                 x -= 1
-        #                 if y0 < y1 and x0 < x1:
-        #                     d += (2 * (dy + dx))
-        #                 else:
-        #                     d -= (2 * (dy + dx))
-        #             else:
-        #                 if y0 < y1 and x0 < x1:
-        #                     d += (2 * dx)
-        #                 else:
-        #                     d -= (2 * dx)
+        else:
+            x, y = x0, y0
+            if 0 > dy/dx >= -1:
+                d = (2 * dy) + dx
+                for x_cod in range(x0, x1):
+                    self.win.set_pixel(x_cod, y, r, g, b)
+                    if d <= 0:
+                        y -= 1
+                        d += (2 * (dy + dx))
+                    else:
+                        d += (2 * dy)
+            else:
+                d = (2 * dx) + dy
+                if y1 > y0:
+                    ystart, yend = y0, y1
+                else:
+                    ystart, yend = y1, y0
+                if x1 > x0:
+                    x = x1
+                else:
+                    x = x0
+                for y_cod in range(ystart, yend):
+                    self.win.set_pixel(x, y_cod, r, g, b)
+                    if d <= 0:
+                        x -= 1
+                        if y0 < y1:
+                            d += (2 * (dy + dx))
+                        else:
+                            d -= (2 * (dy + dx))
+                    else:
+                        if y0 < y1:
+                            d += (2 * dx)
+                        else:
+                            d -= (2 * dx)
 
     def keyboard(self, key):
         if (key == '1'):
