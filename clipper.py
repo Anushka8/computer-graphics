@@ -1,3 +1,4 @@
+# Assignment4: The Clipper
 import numpy as np
 from bitarray import bitarray
 from vertex import *
@@ -61,39 +62,55 @@ def clipLine(P0, P1, top, bottom, right, left):
 
 
 def clipPoly(vertices, top, bottom, right, left):
+    def inside(p, e):
+        if e == 'right':
+            return p.x <= right
+        elif e == 'top':
+            return p.y <= top
+        elif e == 'left':
+            return p.x >= left
+        elif e == 'bottom':
+            return p.y >= bottom
 
-    def inside(p):
-        return (left <= p.x <= right) and (bottom <= p.y <= top)
+    def computeIntersection(s, p, e):
+        A = Vertex(0, 0, s.r, s.g, s.b)
+        if s.x == p.x:
+            m = float('inf')
+        else:
+            m = (p.y - s.y) / (p.x - s.x)
 
-    def computeIntersection(s, p):
-        A = Vertex(0, 0, 255, 255, 255)
-        if s.x > right:
+        if e == 'right':
             A.x = right
-            A.y = s.y + ((A.x - s.x) / (p.x - s.x)) * (p.y - s.y)
-        elif s.y > top:
+            A.y = s.y + (A.x - s.x) * m
+        elif e == 'top':
             A.y = top
-            A.x = s.x + (A.y - s.y) * (p.x - s.x) / (p.y - s.y)
-        elif s.x < left:
+            A.x = s.x + (A.y - s.y) / m
+        elif e == 'left':
             A.x = left
-            A.y = s.y + ((A.x - s.x) / (p.x - s.x)) * (p.y - s.y)
-        elif s.y < bottom:
+            A.y = s.y + (A.x - s.x) * m
+        elif e == 'bottom':
             A.y = bottom
-            A.x = s.x + (A.y - s.y) * (p.x - s.x) / (p.y - s.y)
+            A.x = s.x + (A.y - s.y) / m
         return A
 
     def output(p):
         outputList.append(p)
 
-    outputList = []
-    inputList = vertices
-    S = inputList[-1]
-    for P in inputList:
-        if inside(P):
-            if not inside(S):
-                output(computeIntersection(S, P))
-            output(P)
-        else:
-            if inside(S):
-                output(computeIntersection(P, S))
-        S = P
+    outputList = vertices
+    for edge in ['right', 'top', 'left', 'bottom']:
+        inputList = outputList
+        if len(inputList) == 0:
+            return np.array([])
+        outputList = []
+        S = inputList[-1]
+        for P in inputList:
+            if inside(P, edge):
+                if not inside(S, edge):
+                    output(computeIntersection(S, P, edge))
+                output(P)
+            else:
+                if inside(S, edge):
+                    output(computeIntersection(P, S, edge))
+            S = P
     return np.asarray(outputList)
+
