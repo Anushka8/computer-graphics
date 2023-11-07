@@ -3,6 +3,7 @@ import numpy as np
 import glm
 import math
 from vertex import *
+from transformation_stack import TransformationStack
 
 
 class CGIengine:
@@ -12,9 +13,11 @@ class CGIengine:
         self.win = myWindow
         self.keypressed = 1
         self.default_action = defaction
-        self.model_matrix = glm.mat3(1.0)
-        self.normalization_matrix = glm.mat3(1.0)
-        self.view_matrix = glm.mat3(1.0)
+        self.model_matrix = glm.mat4(1.0)
+        self.normalization_matrix = glm.mat4(1.0)
+        self.view_matrix = glm.mat4(1.0)
+        self.transformation_matrix = glm.mat4(1.0)
+        self.transformation_stack = [glm.mat4(1.0)]
 
     def set_dot(self, x_co, y_co, R, G, B):
         for x in range(5):
@@ -204,20 +207,39 @@ class CGIengine:
     # Assignment 5 - The Transformer
     # set model transform matrix to identity
     def clearModelTransform(self):
-        self.model_matrix = glm.mat3(1.0)
+        self.model_matrix = glm.mat4(1.0)
 
     # multiply translate matrix to current model transform
-    def translate(self, x, y):
-        self.model_matrix[2][0] += x
-        self.model_matrix[2][1] += y
+    def translate(self, x, y, z):
+        translate_matrix = glm.translate(self.model_matrix, glm.vec3(x, y, z))
+        self.model_matrix = glm.mul(translate_matrix, self.model_matrix)
+        # self.model_matrix[0][3] += x
+        # self.model_matrix[1][3] += y
+        # self.model_matrix[2][3] += z
 
     # multiply scale matrix to current model transform
-    def scale(self, x, y):
-        self.model_matrix[0][0] *= x
-        self.model_matrix[1][1] *= y
+    def scale(self, x, y, z):
+        scale_mat = glm.mat4(1.0)
+
+        scale_mat[0][0] = x
+        scale_mat[1][1] = y
+        scale_mat[2][2] = z
+        self.model_matrix = glm.mul(scale_mat, self.model_matrix)
 
     # multiply rotate matrix to current model transform
-    def rotate(self, angle):
+    def rotate_x(self, angle):
+        self.model_matrix[1][1] *= np.cos(np.deg2rad(angle))
+        self.model_matrix[2][1] += np.sin(np.deg2rad(angle))
+        self.model_matrix[1][2] += -np.sin(np.deg2rad(angle))
+        self.model_matrix[2][2] *= np.cos(np.deg2rad(angle))
+
+    def rotate_y(self, angle):
+        self.model_matrix[0][0] *= np.cos(np.deg2rad(angle))
+        self.model_matrix[2][0] += np.sin(np.deg2rad(angle))
+        self.model_matrix[0][0] += -np.sin(np.deg2rad(angle))
+        self.model_matrix[2][2] *= np.cos(np.deg2rad(angle))
+
+    def rotate_z(self, angle):
         self.model_matrix[0][0] *= np.cos(np.deg2rad(angle))
         self.model_matrix[0][1] += np.sin(np.deg2rad(angle))
         self.model_matrix[1][0] += -np.sin(np.deg2rad(angle))
@@ -234,3 +256,28 @@ class CGIengine:
         self.view_matrix[1][1] = ((t - b) / 2)
         self.view_matrix[2][0] = ((r + l) / 2)
         self.view_matrix[2][1] = ((t + b) / 2)
+
+    def pushTransform(self):
+        self.transformation_stack.append(glm.mul(self.transformation_stack[-1], self.model_matrix))
+        self.clearModelTransform()
+
+    def popTransform(self):
+        self.transformation_stack.pop()
+
+    def drawTriangleC(self, vertex_pos, indices, r, g, b):
+        for ind in range(0, len(indices), 3):
+            vertices = []
+            for i in indices[ind: ind + 3]:
+                x, y, z = vertex_pos[3 * i], vertex_pos[3 * i + 1], vertex_pos[3 * i + 2]
+                vertices.append(Vertex(x, y, z, r, g, b))
+
+            for i in range(len(vertices)):
+                original_vertex = glm.vec3(vertices[i].x, vertices[i].y, vertices[i].z)
+                # transformed_vertex = self.transformation_stack[-1] * original_vertex
+                transformed_vertex = glm.mul(self.transformation_stack[-1], original_vertex)
+                vertices[i].x = round(transformed_vertex[0])
+                vertices[i].y = round(transformed_vertex[1])
+            print(self.transformation_stack[-1])
+            self.rasterizeTriangle(vertices[0], vertices[1], vertices[2])
+            print("Done")
+        # self.transformation_stack.pop_matrix()
