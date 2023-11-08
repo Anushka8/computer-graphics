@@ -3,7 +3,6 @@ import numpy as np
 import glm
 import math
 from vertex import *
-from transformation_stack import TransformationStack
 
 
 class CGIengine:
@@ -43,11 +42,11 @@ class CGIengine:
     # go is called on every update of the window display loop
     # have your engine draw stuff in the window.
     def go(self):
-        if (self.keypressed == 1):
+        if self.keypressed == 1:
             # default scene
             self.default_action()
 
-        if (self.keypressed == 2):
+        if self.keypressed == 2:
             # add you own unique scene here
             self.win.clearFB(0, 0, 0)
 
@@ -170,6 +169,8 @@ class CGIengine:
         y_min = min(P0.y, P1.y, P2.y)
         y_max = max(P0.y, P1.y, P2.y)
 
+        lambda0, lambda1, lambda2 = 0, 0, 0
+
         for y in range(y_min, y_max + 1):
             for x in range(x_min, x_max + 1):
                 # get edge functions for all edges
@@ -177,14 +178,14 @@ class CGIengine:
                 E12 = self.edgeFunction(P1, P2, x, y)
                 E20 = self.edgeFunction(P2, P0, x, y)
 
-                if (E01 >= 0 and E12 >= 0 and E20 >= 0) or (E01 < 0 and E12 < 0 and E20 < 0):
+                if E01 >= 0 and E12 >= 0 and E20 >= 0:
                     area = abs(0.5 * self.edgeFunction(P1, P2, P0.x, P0.y))
-                    if area == 0.0:
-                        area = 1
-                    # get barycentric coordinates
-                    lambda0 = E12 / (2 * area)
-                    lambda1 = E20 / (2 * area)
-                    lambda2 = E01 / (2 * area)
+
+                    if area > 0:
+                        # get barycentric coordinates
+                        lambda0 = E12 / (2 * area)
+                        lambda1 = E20 / (2 * area)
+                        lambda2 = E01 / (2 * area)
 
                     # perform interpolation
                     C0 = lambda0 * P0.r + lambda1 * P1.r + lambda2 * P2.r
@@ -206,44 +207,47 @@ class CGIengine:
 
     # Assignment 5 - The Transformer
     # set model transform matrix to identity
+
+    # Assignment 6 - The 3D Object (Changed 2D to 3D)
     def clearModelTransform(self):
         self.model_matrix = glm.mat4(1.0)
 
     # multiply translate matrix to current model transform
     def translate(self, x, y, z):
-        translate_matrix = glm.translate(self.model_matrix, glm.vec3(x, y, z))
-        self.model_matrix = glm.mul(translate_matrix, self.model_matrix)
-        # self.model_matrix[0][3] += x
-        # self.model_matrix[1][3] += y
-        # self.model_matrix[2][3] += z
+        self.model_matrix[3][0] += x
+        self.model_matrix[3][1] += y
+        self.model_matrix[3][2] += z
 
     # multiply scale matrix to current model transform
     def scale(self, x, y, z):
         scale_mat = glm.mat4(1.0)
-
-        scale_mat[0][0] = x
-        scale_mat[1][1] = y
-        scale_mat[2][2] = z
-        self.model_matrix = glm.mul(scale_mat, self.model_matrix)
+        scaling_matrix = glm.scale(scale_mat, glm.vec3(x, y, z))
+        self.model_matrix = self.model_matrix * scaling_matrix
 
     # multiply rotate matrix to current model transform
     def rotate_x(self, angle):
-        self.model_matrix[1][1] *= np.cos(np.deg2rad(angle))
-        self.model_matrix[2][1] += np.sin(np.deg2rad(angle))
-        self.model_matrix[1][2] += -np.sin(np.deg2rad(angle))
-        self.model_matrix[2][2] *= np.cos(np.deg2rad(angle))
+        rotation_matrix = glm.mat4(1.0)
+        rotation_matrix[1][1] = np.cos(np.deg2rad(angle))
+        rotation_matrix[1][2] = np.sin(np.deg2rad(angle))
+        rotation_matrix[2][1] = -np.sin(np.deg2rad(angle))
+        rotation_matrix[2][2] = np.cos(np.deg2rad(angle))
+        self.model_matrix = self.model_matrix * rotation_matrix
 
     def rotate_y(self, angle):
-        self.model_matrix[0][0] *= np.cos(np.deg2rad(angle))
-        self.model_matrix[2][0] += np.sin(np.deg2rad(angle))
-        self.model_matrix[0][0] += -np.sin(np.deg2rad(angle))
-        self.model_matrix[2][2] *= np.cos(np.deg2rad(angle))
+        rotation_matrix = glm.mat4(1.0)
+        rotation_matrix[0][0] = np.cos(np.deg2rad(angle))
+        rotation_matrix[0][2] = -np.sin(np.deg2rad(angle))
+        rotation_matrix[2][0] = np.sin(np.deg2rad(angle))
+        rotation_matrix[2][2] = np.cos(np.deg2rad(angle))
+        self.model_matrix = self.model_matrix * rotation_matrix
 
     def rotate_z(self, angle):
-        self.model_matrix[0][0] *= np.cos(np.deg2rad(angle))
-        self.model_matrix[0][1] += np.sin(np.deg2rad(angle))
-        self.model_matrix[1][0] += -np.sin(np.deg2rad(angle))
-        self.model_matrix[1][1] *= np.cos(np.deg2rad(angle))
+        rotation_matrix = glm.mat4(1.0)
+        rotation_matrix[0][0] = np.cos(np.deg2rad(angle))
+        rotation_matrix[0][1] = np.sin(np.deg2rad(angle))
+        rotation_matrix[1][0] = -np.sin(np.deg2rad(angle))
+        rotation_matrix[1][1] = np.cos(np.deg2rad(angle))
+        self.model_matrix = self.model_matrix * rotation_matrix
 
     def defineClipWindow(self, t, b, r, l):
         self.normalization_matrix[0][0] = (2 / (r - l))
@@ -259,12 +263,11 @@ class CGIengine:
 
     def pushTransform(self):
         self.transformation_stack.append(glm.mul(self.transformation_stack[-1], self.model_matrix))
-        self.clearModelTransform()
 
     def popTransform(self):
         self.transformation_stack.pop()
 
-    def drawTriangleC(self, vertex_pos, indices, r, g, b):
+    def drawTrianglesC(self, vertex_pos, indices, r, g, b):
         for ind in range(0, len(indices), 3):
             vertices = []
             for i in indices[ind: ind + 3]:
@@ -273,11 +276,42 @@ class CGIengine:
 
             for i in range(len(vertices)):
                 original_vertex = glm.vec3(vertices[i].x, vertices[i].y, vertices[i].z)
-                # transformed_vertex = self.transformation_stack[-1] * original_vertex
-                transformed_vertex = glm.mul(self.transformation_stack[-1], original_vertex)
-                vertices[i].x = round(transformed_vertex[0])
-                vertices[i].y = round(transformed_vertex[1])
-            print(self.transformation_stack[-1])
+
+                transformed_vertex = self.view_matrix * self.normalization_matrix * self.model_matrix * original_vertex
+
+                vertices[i].x = int(transformed_vertex.x)
+                vertices[i].y = int(transformed_vertex.y)
+                vertices[i].z = int(transformed_vertex.z)
+
             self.rasterizeTriangle(vertices[0], vertices[1], vertices[2])
-            print("Done")
-        # self.transformation_stack.pop_matrix()
+
+    def drawTrianglesWireframe(self, vertex_pos, indices, r, g, b):
+        for ind in range(0, len(indices), 3):
+            vertices = []
+            for i in indices[ind: ind + 3]:
+                x, y, z = vertex_pos[3 * i], vertex_pos[3 * i + 1], vertex_pos[3 * i + 2]
+                vertices.append(Vertex(x, y, z, r, g, b))
+
+            p0 = (vertices[0].x, vertices[0].y, vertices[0].z)
+            p1 = (vertices[1].x, vertices[1].y, vertices[1].z)
+
+            E1 = (p1[0] - p0[0], p1[1] - p0[1], p1[2] - p0[2])
+            E2 = (p0[0] - p1[0], p0[1] - p1[1], p0[2] - p1[2])
+
+            cross_product_z = E1[0] * E2[1] - E1[1] * E2[0]
+
+            if cross_product_z < 0:
+                continue
+
+            for i in range(len(vertices)):
+                original_vertex = glm.vec3(vertices[i].x, vertices[i].y, vertices[i].z)
+
+                transformed_vertex = self.view_matrix * self.normalization_matrix * self.model_matrix * original_vertex
+
+                vertices[i].x = int(transformed_vertex.x)
+                vertices[i].y = int(transformed_vertex.y)
+                vertices[i].z = int(transformed_vertex.z)
+
+            self.rasterizeLine(vertices[0].x, vertices[0].y, vertices[1].x, vertices[1].y, r, g, b)
+            self.rasterizeLine(vertices[1].x, vertices[1].y, vertices[2].x, vertices[2].y, r, g, b)
+            self.rasterizeLine(vertices[2].x, vertices[2].y, vertices[0].x, vertices[0].y, r, g, b)

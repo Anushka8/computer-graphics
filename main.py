@@ -6,48 +6,46 @@ import numpy as np
 
 
 def default_action():
-    # # place your code here
-    myEngine.win.clearFB(0, 0, 0)
-    myEngine.clearModelTransform()
-    myEngine.translate(400, 190, 0)
+
+    # lower base
     myEngine.pushTransform()
-    myEngine.translate(0, 0.5, 0)
-    myEngine.scale(120, 30, 1)
-    myEngine.pushTransform()
-    myEngine.drawTriangleC(cube, cube_idx, 255, 90, 0)
+    myEngine.translate(400.0, 100.0, 0.0)
+    myEngine.scale(200.0, 50.0, 0.0)
+    myEngine.drawTrianglesC(cube, cube_idx, 255, 255, 0)
+    myEngine.drawTrianglesWireframe(cube, cube_idx, 165, 42, 42)
     myEngine.popTransform()
 
-    # myEngine.translate(100,0, 0)
-    myEngine.clearModelTransform()
-    myEngine.translate(0, 130, 0)
+    # pole
     myEngine.pushTransform()
-    # myEngine.translate(50, 50, 0)
-    myEngine.scale(80, 200, 1)
+    myEngine.translate(0.0, 120.0, 0.0)
     myEngine.pushTransform()
-    myEngine.drawTriangleC(cylinder, cylinder_idx, 255, 30, 0)
+    myEngine.scale(0.4, 4.0, 0.0)
+    myEngine.drawTrianglesC(cylinder, cylinder_idx, 255, 255, 0)
+    myEngine.drawTrianglesWireframe(cylinder, cylinder_idx, 165, 42, 42)
+    myEngine.popTransform()
     myEngine.popTransform()
 
-    myEngine.clearModelTransform()
-    myEngine.translate(0, 100, 0)
+    # forming upper base
     myEngine.pushTransform()
-    myEngine.translate(0, 0.5, 0)
-    myEngine.scale(120, 30, 1)
+    myEngine.translate(0.0, 115, 0.0)
     myEngine.pushTransform()
-    myEngine.drawTriangleC(cube, cube_idx, 255, 20, 0)
+    myEngine.scale(2.5, 0.25, 0)
+    myEngine.drawTrianglesC(cube, cube_idx, 255, 255, 0)
+    myEngine.drawTrianglesWireframe(cube, cube_idx, 165, 42, 42)
     myEngine.popTransform()
 
-    myEngine.clearModelTransform()
-    myEngine.translate(0, 80, 0)
+    # cube at the top
     myEngine.pushTransform()
-    myEngine.rotate_x(20)
-    myEngine.rotate_y(85)
-    myEngine.rotate_z(75)
-    myEngine.translate(0, 0.5, 0)
-    myEngine.scale(80, 60, 1)
-    # myEngine.rotate_y(80)
-    # myEngine.rotate_x(120)
+    myEngine.translate(0.0, 108.0, 0.0)
     myEngine.pushTransform()
-    myEngine.drawTriangleC(cube, cube_idx, 255, 20, 0)
+    myEngine.scale(0.4, 1.9, 0.0)
+    myEngine.rotate_x(45.0)
+    myEngine.rotate_y(45.0)
+    myEngine.drawTrianglesC(cube, cube_idx, 0, 255, 0)
+    myEngine.drawTrianglesWireframe(cube, cube_idx, 0, 0, 0)
+    myEngine.popTransform()
+    myEngine.popTransform()
+    myEngine.popTransform()
     myEngine.popTransform()
 
 
