@@ -15,8 +15,8 @@ class CGIengine:
         self.model_matrix = glm.mat4(1.0)
         self.normalization_matrix = glm.mat4(1.0)
         self.view_matrix = glm.mat4(1.0)
-        self.transformation_matrix = glm.mat4(1.0)
-        self.transformation_stack = [glm.mat4(1.0)]
+        self.transformation_matrix = glm.mat4(1.0)  # transformation matrix
+        self.transformation_stack = [glm.mat4(1.0)]  # stack to traverse through hierarchy
 
     def set_dot(self, x_co, y_co, R, G, B):
         for x in range(5):
@@ -198,10 +198,10 @@ class CGIengine:
         return (x - P0.x) * (P1.y - P0.y) - (y - P0.y) * (P1.x - P0.x)
 
     def keyboard(self, key):
-        if (key == '1'):
+        if key == '1':
             self.keypressed = 1
             self.go()
-        if (key == '2'):
+        if key == '2':
             self.keypressed = 2
             self.go()
 
@@ -210,10 +210,12 @@ class CGIengine:
 
     # Assignment 6 - The 3D Object (Changed 2D to 3D)
     def clearModelTransform(self):
+        # initialize the model matrix to identity
         self.model_matrix = glm.mat4(1.0)
 
     # multiply translate matrix to current model transform
     def translate(self, x, y, z):
+        # translate along x, y and z axes
         self.model_matrix[3][0] += x
         self.model_matrix[3][1] += y
         self.model_matrix[3][2] += z
@@ -224,7 +226,7 @@ class CGIengine:
         scaling_matrix = glm.scale(scale_mat, glm.vec3(x, y, z))
         self.model_matrix = self.model_matrix * scaling_matrix
 
-    # multiply rotate matrix to current model transform
+    # rotate object along x-axis
     def rotate_x(self, angle):
         rotation_matrix = glm.mat4(1.0)
         rotation_matrix[1][1] = np.cos(np.deg2rad(angle))
@@ -233,6 +235,7 @@ class CGIengine:
         rotation_matrix[2][2] = np.cos(np.deg2rad(angle))
         self.model_matrix = self.model_matrix * rotation_matrix
 
+    # rotate object along y-axis
     def rotate_y(self, angle):
         rotation_matrix = glm.mat4(1.0)
         rotation_matrix[0][0] = np.cos(np.deg2rad(angle))
@@ -241,6 +244,7 @@ class CGIengine:
         rotation_matrix[2][2] = np.cos(np.deg2rad(angle))
         self.model_matrix = self.model_matrix * rotation_matrix
 
+    # rotate object along z-axis
     def rotate_z(self, angle):
         rotation_matrix = glm.mat4(1.0)
         rotation_matrix[0][0] = np.cos(np.deg2rad(angle))
@@ -249,24 +253,29 @@ class CGIengine:
         rotation_matrix[1][1] = np.cos(np.deg2rad(angle))
         self.model_matrix = self.model_matrix * rotation_matrix
 
+    # get the normalization window
     def defineClipWindow(self, t, b, r, l):
         self.normalization_matrix[0][0] = (2 / (r - l))
         self.normalization_matrix[1][1] = (2 / (t - b))
         self.normalization_matrix[2][0] = ((-2 * l) / (r - l)) - 1
         self.normalization_matrix[2][1] = ((-2 * b) / (t - b)) - 1
 
+    # get the viewing window
     def defineViewWindow(self, t, b, r, l):
         self.view_matrix[0][0] = ((r - l) / 2)
         self.view_matrix[1][1] = ((t - b) / 2)
         self.view_matrix[2][0] = ((r + l) / 2)
         self.view_matrix[2][1] = ((t + b) / 2)
 
+    # push object to the stack
     def pushTransform(self):
         self.transformation_stack.append(glm.mul(self.transformation_stack[-1], self.model_matrix))
 
+    # pop from the stack
     def popTransform(self):
         self.transformation_stack.pop()
 
+    # draw the projection of the 3D object
     def drawTrianglesC(self, vertex_pos, indices, r, g, b):
         for ind in range(0, len(indices), 3):
             vertices = []
@@ -285,6 +294,7 @@ class CGIengine:
 
             self.rasterizeTriangle(vertices[0], vertices[1], vertices[2])
 
+    # draw wireframes for the object
     def drawTrianglesWireframe(self, vertex_pos, indices, r, g, b):
         for ind in range(0, len(indices), 3):
             vertices = []
@@ -292,15 +302,20 @@ class CGIengine:
                 x, y, z = vertex_pos[3 * i], vertex_pos[3 * i + 1], vertex_pos[3 * i + 2]
                 vertices.append(Vertex(x, y, z, r, g, b))
 
-            p0 = (vertices[0].x, vertices[0].y, vertices[0].z)
-            p1 = (vertices[1].x, vertices[1].y, vertices[1].z)
+            # get vertices
+            p0, p1, p2 = glm.vec3(vertices[0].x, vertices[0].y, vertices[0].z), \
+                         glm.vec3(vertices[1].x, vertices[1].y, vertices[1].z), \
+                         glm.vec3(vertices[2].x, vertices[2].y, vertices[2].z)
 
-            E1 = (p1[0] - p0[0], p1[1] - p0[1], p1[2] - p0[2])
-            E2 = (p0[0] - p1[0], p0[1] - p1[1], p0[2] - p1[2])
+            E1, E2 = p1 - p0, p2 - p0
 
+            # calculate normal vector for z-axis
+            cross_product_x = E1[1] * E2[2] - E1[2] * E2[1]
+            cross_product_y = E1[2] * E2[0] - E1[0] * E2[2]
             cross_product_z = E1[0] * E2[1] - E1[1] * E2[0]
 
-            if cross_product_z < 0:
+            # skip rear-facing triangles
+            if cross_product_z < 0 or cross_product_y < 0 or (cross_product_z < 0 and cross_product_x < 0):
                 continue
 
             for i in range(len(vertices)):

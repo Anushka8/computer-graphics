@@ -12,7 +12,7 @@ def default_action():
     myEngine.translate(400.0, 100.0, 0.0)
     myEngine.scale(200.0, 50.0, 0.0)
     myEngine.drawTrianglesC(cube, cube_idx, 255, 255, 0)
-    myEngine.drawTrianglesWireframe(cube, cube_idx, 165, 42, 42)
+    myEngine.drawTrianglesWireframe(cube, cube_idx, 255, 0, 0)
     myEngine.popTransform()
 
     # pole
@@ -21,17 +21,17 @@ def default_action():
     myEngine.pushTransform()
     myEngine.scale(0.4, 4.0, 0.0)
     myEngine.drawTrianglesC(cylinder, cylinder_idx, 255, 255, 0)
-    myEngine.drawTrianglesWireframe(cylinder, cylinder_idx, 165, 42, 42)
+    myEngine.drawTrianglesWireframe(cylinder, cylinder_idx, 255, 0, 0)
     myEngine.popTransform()
     myEngine.popTransform()
 
-    # forming upper base
+    # upper base
     myEngine.pushTransform()
     myEngine.translate(0.0, 115, 0.0)
     myEngine.pushTransform()
     myEngine.scale(2.5, 0.25, 0)
     myEngine.drawTrianglesC(cube, cube_idx, 255, 255, 0)
-    myEngine.drawTrianglesWireframe(cube, cube_idx, 165, 42, 42)
+    myEngine.drawTrianglesWireframe(cube, cube_idx, 255, 0, 0)
     myEngine.popTransform()
 
     # cube at the top
