@@ -17,6 +17,8 @@ class CGIengine:
         self.view_matrix = glm.mat4(1.0)
         self.transformation_matrix = glm.mat4(1.0)  # transformation matrix
         self.transformation_stack = [glm.mat4(1.0)]  # stack to traverse through hierarchy
+        self.viewing_transform = glm.mat4(1.0)  # viewing transform Assignment 7
+        self.projection_transform = glm.mat4(1.0)  # projection matrix Assignment 7
 
     def set_dot(self, x_co, y_co, R, G, B):
         for x in range(5):
@@ -227,7 +229,7 @@ class CGIengine:
         self.model_matrix = self.model_matrix * scaling_matrix
 
     # rotate object along x-axis
-    def rotate_x(self, angle):
+    def rotatex(self, angle):
         rotation_matrix = glm.mat4(1.0)
         rotation_matrix[1][1] = np.cos(np.deg2rad(angle))
         rotation_matrix[1][2] = np.sin(np.deg2rad(angle))
@@ -236,7 +238,7 @@ class CGIengine:
         self.model_matrix = self.model_matrix * rotation_matrix
 
     # rotate object along y-axis
-    def rotate_y(self, angle):
+    def rotatey(self, angle):
         rotation_matrix = glm.mat4(1.0)
         rotation_matrix[0][0] = np.cos(np.deg2rad(angle))
         rotation_matrix[0][2] = -np.sin(np.deg2rad(angle))
@@ -245,7 +247,7 @@ class CGIengine:
         self.model_matrix = self.model_matrix * rotation_matrix
 
     # rotate object along z-axis
-    def rotate_z(self, angle):
+    def rotatez(self, angle):
         rotation_matrix = glm.mat4(1.0)
         rotation_matrix[0][0] = np.cos(np.deg2rad(angle))
         rotation_matrix[0][1] = np.sin(np.deg2rad(angle))
@@ -276,7 +278,33 @@ class CGIengine:
         self.transformation_stack.pop()
 
     # draw the projection of the 3D object
-    def drawTrianglesC(self, vertex_pos, indices, r, g, b):
+    def drawTrianglesC(self, vertex_pos, indices, r, g, b, outr=-1, outg=-1, outb=-1):
+        for ind in range(0, len(indices), 3):
+            vertices = []
+            for i in indices[ind: ind + 3]:
+                x, y, z = vertex_pos[3 * i], vertex_pos[3 * i + 1], vertex_pos[3 * i + 2]
+                vertices.append(Vertex(x, y, z, r, g, b))
+
+            for i in range(len(vertices)):
+                original_vertex = glm.vec3(vertices[i].x, vertices[i].y, vertices[i].z)
+
+                transformed_vertex = self.view_matrix * self.normalization_matrix * self.model_matrix * original_vertex
+
+                projected_vertex = self.projection_transform * transformed_vertex
+
+                # if projected_vertex.w != 0:
+                #     projected_vertex.x /= projected_vertex.w
+                #     projected_vertex.y /= projected_vertex.w
+                #     projected_vertex.z /= projected_vertex.w
+
+                vertices[i].x = int(projected_vertex.x)
+                vertices[i].y = int(projected_vertex.y)
+                vertices[i].z = int(projected_vertex.z)
+
+            self.rasterizeTriangle(vertices[0], vertices[1], vertices[2])
+
+    # draw wireframes for the object
+    def drawTrianglesWireframe(self, vertex_pos, indices, r, g, b):
         for ind in range(0, len(indices), 3):
             vertices = []
             for i in indices[ind: ind + 3]:
@@ -291,16 +319,6 @@ class CGIengine:
                 vertices[i].x = int(transformed_vertex.x)
                 vertices[i].y = int(transformed_vertex.y)
                 vertices[i].z = int(transformed_vertex.z)
-
-            self.rasterizeTriangle(vertices[0], vertices[1], vertices[2])
-
-    # draw wireframes for the object
-    def drawTrianglesWireframe(self, vertex_pos, indices, r, g, b):
-        for ind in range(0, len(indices), 3):
-            vertices = []
-            for i in indices[ind: ind + 3]:
-                x, y, z = vertex_pos[3 * i], vertex_pos[3 * i + 1], vertex_pos[3 * i + 2]
-                vertices.append(Vertex(x, y, z, r, g, b))
 
             # get vertices
             p0, p1, p2 = glm.vec3(vertices[0].x, vertices[0].y, vertices[0].z), \
@@ -315,18 +333,33 @@ class CGIengine:
             cross_product_z = E1[0] * E2[1] - E1[1] * E2[0]
 
             # skip rear-facing triangles
-            if cross_product_z < 0 or cross_product_y < 0 or (cross_product_z < 0 and cross_product_x < 0):
+            if cross_product_z < 0:
                 continue
-
-            for i in range(len(vertices)):
-                original_vertex = glm.vec3(vertices[i].x, vertices[i].y, vertices[i].z)
-
-                transformed_vertex = self.view_matrix * self.normalization_matrix * self.model_matrix * original_vertex
-
-                vertices[i].x = int(transformed_vertex.x)
-                vertices[i].y = int(transformed_vertex.y)
-                vertices[i].z = int(transformed_vertex.z)
 
             self.rasterizeLine(vertices[0].x, vertices[0].y, vertices[1].x, vertices[1].y, r, g, b)
             self.rasterizeLine(vertices[1].x, vertices[1].y, vertices[2].x, vertices[2].y, r, g, b)
             self.rasterizeLine(vertices[2].x, vertices[2].y, vertices[0].x, vertices[0].y, r, g, b)
+
+    def setCamera(self, eye, lookAt, up):
+        self.view_matrix = glm.lookAt(glm.vec3(eye), glm.vec3(lookAt), glm.vec3(up))
+
+    def setOrtho(self, l, r, b, t, n, f):
+        self.projection_transform = glm.orthoRH_NO(l, r, b, t, n, f)
+        # self.projection_transform[0][0] = 2 / (r - l)
+        # self.projection_transform[3][0] = - (r + l) / (r - l)
+        # self.projection_transform[1][1] = 2 / (t - b)
+        # self.projection_transform[3][1] = - (t + b) / (t - b)
+        # self.projection_transform[2][2] = -2 / (f - n)
+        # self.projection_transform[3][2] = - (f + n) / (f - n)
+
+    def frustumPerspective(self, l, r, b, t, n, f):
+        self.projection_transform = glm.frustumRH_NO(l, r, b, t, n, f)
+        # self.projection_transform[0][0] = (2 * n) / (r - l)
+        # self.projection_transform[2][0] = (r + l) / (r - l)
+        # self.projection_transform[1][1] = (2 * n) / (t - b)
+        # self.projection_transform[2][1] = (t + b) / (t - b)
+        # self.projection_transform[2][2] = - (f + n) / (f - n)
+        # self.projection_transform[3][2] = - (2 * f * n) / (f - n)
+
+    def fovPerspective(self, fov, width, height, near, far):
+        self.projection_transform = glm.perspectiveRH_NO(glm.radians(fov), width/height, near, far)
