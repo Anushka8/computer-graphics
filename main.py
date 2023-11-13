@@ -4,57 +4,74 @@ from vertex import *
 from shapes import *
 import numpy as np
 
+def drawPedistal():
 
-def default_action():
-
-    # lower base
-    myEngine.pushTransform()
-    myEngine.translate(400.0, 100.0, 0.0)
-    myEngine.scale(200.0, 50.0, 0.0)
-    myEngine.drawTrianglesC(cube, cube_idx, 255, 255, 0)
-    myEngine.drawTrianglesWireframe(cube, cube_idx, 255, 0, 0)
-    myEngine.popTransform()
+    # draw a single pedestal with the cube on top...
+    # you can replace with your own if you like.
 
     # pole
     myEngine.pushTransform()
-    myEngine.translate(0.0, 120.0, 0.0)
-    myEngine.pushTransform()
-    myEngine.scale(0.4, 4.0, 0.0)
-    myEngine.drawTrianglesC(cylinder, cylinder_idx, 255, 255, 0)
-    myEngine.drawTrianglesWireframe(cylinder, cylinder_idx, 255, 0, 0)
+    myEngine.scale (0.6, 2.0, 0.6)
+    myEngine.drawTrianglesC (cylinder, cylinder_idx, 255, 255, 0, 255, 0, 0)
     myEngine.popTransform()
-    myEngine.popTransform()
-
-    # upper base
+    
+    #top
     myEngine.pushTransform()
-    myEngine.translate(0.0, 115, 0.0)
+    myEngine.translate (0.0, 1.0, 0.0)
     myEngine.pushTransform()
-    myEngine.scale(2.5, 0.25, 0)
-    myEngine.drawTrianglesC(cube, cube_idx, 255, 255, 0)
-    myEngine.drawTrianglesWireframe(cube, cube_idx, 255, 0, 0)
+    myEngine.scale (0.9, 0.1, 0.9)
+    myEngine.drawTrianglesC (cube, cube_idx, 255, 255, 0, 255, 0, 0)
     myEngine.popTransform()
 
-    # cube at the top
+    # showcaae cube
     myEngine.pushTransform()
-    myEngine.translate(0.0, 108.0, 0.0)
+    myEngine.translate (0.0, 0.45, 0.0)
     myEngine.pushTransform()
-    myEngine.scale(0.4, 1.9, 0.0)
-    myEngine.rotate_x(45.0)
-    myEngine.rotate_y(45.0)
-    myEngine.drawTrianglesC(cube, cube_idx, 0, 255, 0)
-    myEngine.drawTrianglesWireframe(cube, cube_idx, 0, 0, 0)
-    myEngine.popTransform()
+    myEngine.scale (0.4, 0.4, 0.4)
+    myEngine.rotatex (45.0)
+    myEngine.rotatey (45.0)
+    myEngine.drawTrianglesC (cube, cube_idx, 0, 255, 0, 0, 0, 0)
     myEngine.popTransform()
     myEngine.popTransform()
     myEngine.popTransform()
 
+    #bottom
+    myEngine.pushTransform()
+    myEngine.translate (0.0, -1.0, 0.0)
+    myEngine.pushTransform()
+    myEngine.scale (0.9, 0.1, 0.9)
+    myEngine.drawTrianglesC (cube, cube_idx, 255, 255, 0, 255, 0, 0)
+    myEngine.popTransform()
+    myEngine.popTransform()
 
+def default_action ():
+    # clear the FB
+    myEngine.win.clearFB (0, 0, 0)
+    
+    # set up your camera to use orthographic projection here.
+    
+    # position
+    myEngine.pushTransform()
+    myEngine.translate (-1, 0, -3.0)
+    drawPedistal()
+    
+    myEngine.pushTransform()
+    myEngine.translate (1, 0, -5.0)
+    drawPedistal()
+    
+    
+    
+ 
+    
+ 
+    
 window = RitWindow(800, 800)
-myEngine = CGIengine(window, default_action)
-
+myEngine = CGIengine (window, default_action)
 
 def main():
-    window.run(myEngine)
+    window.run (myEngine)
+    
+
 
 
 if __name__ == "__main__":
