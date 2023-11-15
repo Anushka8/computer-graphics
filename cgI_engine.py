@@ -19,6 +19,7 @@ class CGIengine:
         self.transformation_stack = [glm.mat4(1.0)]  # stack to traverse through hierarchy
         self.viewing_transform = glm.mat4(1.0)  # viewing transform Assignment 7
         self.projection_transform = glm.mat4(1.0)  # projection matrix Assignment 7
+        self.z_buffer = [[float('inf') for _ in range(self.w_width)] for _ in range(self.w_height)]
 
     def set_dot(self, x_co, y_co, R, G, B):
         for x in range(5):
@@ -189,12 +190,19 @@ class CGIengine:
                         lambda1 = E20 / (2 * area)
                         lambda2 = E01 / (2 * area)
 
-                    # perform interpolation
-                    C0 = lambda0 * P0.r + lambda1 * P1.r + lambda2 * P2.r
-                    C1 = lambda0 * P0.g + lambda1 * P1.g + lambda2 * P2.g
-                    C2 = lambda0 * P0.b + lambda1 * P1.b + lambda2 * P2.b
+                    # Calculate interpolated depth
+                    interpolated_depth = lambda0 * P0.z + lambda1 * P1.z + lambda2 * P2.z
 
-                    self.win.set_pixel(x, y, C0, C1, C2)
+                    # Depth test
+                    if interpolated_depth < self.z_buffer[x][y]:
+                        self.z_buffer[x][y] = interpolated_depth
+
+                        # perform interpolation
+                        C0 = lambda0 * P0.r + lambda1 * P1.r + lambda2 * P2.r
+                        C1 = lambda0 * P0.g + lambda1 * P1.g + lambda2 * P2.g
+                        C2 = lambda0 * P0.b + lambda1 * P1.b + lambda2 * P2.b
+
+                        self.win.set_pixel(x, y, C0, C1, C2)
 
     def edgeFunction(self, P0, P1, x, y):
         return (x - P0.x) * (P1.y - P0.y) - (y - P0.y) * (P1.x - P0.x)
@@ -286,22 +294,42 @@ class CGIengine:
                 vertices.append(Vertex(x, y, z, r, g, b))
 
             for i in range(len(vertices)):
-                original_vertex = glm.vec3(vertices[i].x, vertices[i].y, vertices[i].z)
+                original_vertex = glm.vec4(vertices[i].x, vertices[i].y, vertices[i].z, 1)
 
                 transformed_vertex = self.view_matrix * self.normalization_matrix * self.model_matrix * original_vertex
 
                 projected_vertex = self.projection_transform * transformed_vertex
 
-                # if projected_vertex.w != 0:
-                #     projected_vertex.x /= projected_vertex.w
-                #     projected_vertex.y /= projected_vertex.w
-                #     projected_vertex.z /= projected_vertex.w
+                if projected_vertex.w != 0:
+                    projected_vertex.x /= projected_vertex.w
+                    projected_vertex.y /= projected_vertex.w
+                    projected_vertex.z /= projected_vertex.w
 
                 vertices[i].x = int(projected_vertex.x)
                 vertices[i].y = int(projected_vertex.y)
                 vertices[i].z = int(projected_vertex.z)
 
             self.rasterizeTriangle(vertices[0], vertices[1], vertices[2])
+
+            # get vertices
+            p0, p1, p2 = glm.vec3(vertices[0].x, vertices[0].y, vertices[0].z), \
+                         glm.vec3(vertices[1].x, vertices[1].y, vertices[1].z), \
+                         glm.vec3(vertices[2].x, vertices[2].y, vertices[2].z)
+
+            E1, E2 = p1 - p0, p2 - p0
+
+            # calculate normal vector for z-axis
+            cross_product_x = E1[1] * E2[2] - E1[2] * E2[1]
+            cross_product_y = E1[2] * E2[0] - E1[0] * E2[2]
+            cross_product_z = E1[0] * E2[1] - E1[1] * E2[0]
+
+            # skip rear-facing triangles
+            if cross_product_z < 0:
+                continue
+
+            self.rasterizeLine(vertices[0].x, vertices[0].y, vertices[1].x, vertices[1].y, outr, outg, outb)
+            self.rasterizeLine(vertices[1].x, vertices[1].y, vertices[2].x, vertices[2].y, outr, outg, outb)
+            self.rasterizeLine(vertices[2].x, vertices[2].y, vertices[0].x, vertices[0].y, outr, outg, outb)
 
     # draw wireframes for the object
     def drawTrianglesWireframe(self, vertex_pos, indices, r, g, b):
@@ -345,21 +373,9 @@ class CGIengine:
 
     def setOrtho(self, l, r, b, t, n, f):
         self.projection_transform = glm.orthoRH_NO(l, r, b, t, n, f)
-        # self.projection_transform[0][0] = 2 / (r - l)
-        # self.projection_transform[3][0] = - (r + l) / (r - l)
-        # self.projection_transform[1][1] = 2 / (t - b)
-        # self.projection_transform[3][1] = - (t + b) / (t - b)
-        # self.projection_transform[2][2] = -2 / (f - n)
-        # self.projection_transform[3][2] = - (f + n) / (f - n)
 
     def frustumPerspective(self, l, r, b, t, n, f):
         self.projection_transform = glm.frustumRH_NO(l, r, b, t, n, f)
-        # self.projection_transform[0][0] = (2 * n) / (r - l)
-        # self.projection_transform[2][0] = (r + l) / (r - l)
-        # self.projection_transform[1][1] = (2 * n) / (t - b)
-        # self.projection_transform[2][1] = (t + b) / (t - b)
-        # self.projection_transform[2][2] = - (f + n) / (f - n)
-        # self.projection_transform[3][2] = - (2 * f * n) / (f - n)
 
     def fovPerspective(self, fov, width, height, near, far):
-        self.projection_transform = glm.perspectiveRH_NO(glm.radians(fov), width/height, near, far)
+        self.projection_transform = glm.perspectiveRH_NO(glm.radians(fov), width / height, near, far)
