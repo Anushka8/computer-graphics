@@ -311,25 +311,25 @@ class CGIengine:
 
             self.rasterizeTriangle(vertices[0], vertices[1], vertices[2])
 
-            # get vertices
-            p0, p1, p2 = glm.vec3(vertices[0].x, vertices[0].y, vertices[0].z), \
-                         glm.vec3(vertices[1].x, vertices[1].y, vertices[1].z), \
-                         glm.vec3(vertices[2].x, vertices[2].y, vertices[2].z)
-
-            E1, E2 = p1 - p0, p2 - p0
-
-            # calculate normal vector for z-axis
-            cross_product_x = E1[1] * E2[2] - E1[2] * E2[1]
-            cross_product_y = E1[2] * E2[0] - E1[0] * E2[2]
-            cross_product_z = E1[0] * E2[1] - E1[1] * E2[0]
-
-            # skip rear-facing triangles
-            if cross_product_z < 0:
-                continue
-
-            self.rasterizeLine(vertices[0].x, vertices[0].y, vertices[1].x, vertices[1].y, outr, outg, outb)
-            self.rasterizeLine(vertices[1].x, vertices[1].y, vertices[2].x, vertices[2].y, outr, outg, outb)
-            self.rasterizeLine(vertices[2].x, vertices[2].y, vertices[0].x, vertices[0].y, outr, outg, outb)
+            # # get vertices
+            # p0, p1, p2 = glm.vec3(vertices[0].x, vertices[0].y, vertices[0].z), \
+            #              glm.vec3(vertices[1].x, vertices[1].y, vertices[1].z), \
+            #              glm.vec3(vertices[2].x, vertices[2].y, vertices[2].z)
+            #
+            # E1, E2 = p1 - p0, p2 - p0
+            #
+            # # calculate normal vector for z-axis
+            # cross_product_x = E1[1] * E2[2] - E1[2] * E2[1]
+            # cross_product_y = E1[2] * E2[0] - E1[0] * E2[2]
+            # cross_product_z = E1[0] * E2[1] - E1[1] * E2[0]
+            #
+            # # skip rear-facing triangles
+            # if cross_product_z < 0:
+            #     continue
+            #
+            # self.rasterizeLine(vertices[0].x, vertices[0].y, vertices[1].x, vertices[1].y, outr, outg, outb)
+            # self.rasterizeLine(vertices[1].x, vertices[1].y, vertices[2].x, vertices[2].y, outr, outg, outb)
+            # self.rasterizeLine(vertices[2].x, vertices[2].y, vertices[0].x, vertices[0].y, outr, outg, outb)
 
     # draw wireframes for the object
     def drawTrianglesWireframe(self, vertex_pos, indices, r, g, b):
