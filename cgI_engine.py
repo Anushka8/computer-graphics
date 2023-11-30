@@ -312,11 +312,17 @@ class CGIengine:
                     projected_vertex.y /= projected_vertex.w
                     projected_vertex.z /= projected_vertex.w
 
-                
+                original_vertex = glm.vec3(projected_vertex.x, projected_vertex.y, 1)
 
-                vertices[i].x = int(projected_vertex.x)
-                vertices[i].y = int(projected_vertex.y)
-                vertices[i].z = int(projected_vertex.z)
+                final_transform = self.view_matrix * original_vertex
+
+                # vertices[i].x = int(projected_vertex.x)
+                # vertices[i].y = int(projected_vertex.y)
+                # vertices[i].z = int(projected_vertex.z)
+
+                vertices[i].x = int(final_transform.x)
+                vertices[i].y = int(final_transform.y)
+                vertices[i].z = int(final_transform.z)
 
             self.rasterizeTriangle(vertices[0], vertices[1], vertices[2])
 
@@ -383,7 +389,7 @@ class CGIengine:
     def setOrtho(self, l, r, b, t, n, f):
         self.projection_transform = glm.orthoRH_NO(l, r, b, t, n, f)
 
-    def frustumPerspective(self, l, r, b, t, n, f):
+    def setFrustum(self, l, r, b, t, n, f):
         self.projection_transform = glm.frustumRH_NO(l, r, b, t, n, f)
 
     # def fovPerspective(self, fov, aspect, near, far):
