@@ -1,3 +1,5 @@
+import copy
+
 from rit_window import *
 import numpy as np
 import glm
@@ -279,7 +281,10 @@ class CGIengine:
 
     # push object to the stack
     def pushTransform(self):
-        self.transformation_stack.append(glm.mul(self.transformation_stack[-1], self.model_matrix))
+        if not self.transformation_stack:
+            self.transformation_stack.append(glm.mat4(1.0))
+        else:
+            self.transformation_stack.append(copy.deepcopy(self.transformation_stack[-1]))
 
     # pop from the stack
     def popTransform(self):
@@ -296,14 +301,18 @@ class CGIengine:
             for i in range(len(vertices)):
                 original_vertex = glm.vec4(vertices[i].x, vertices[i].y, vertices[i].z, 1)
 
-                transformed_vertex = self.view_matrix * self.normalization_matrix * self.model_matrix * original_vertex
+                # transformed_vertex = self.view_matrix * self.normalization_matrix * self.model_matrix *
+                # original_vertex \ * self.viewing_transform
 
-                projected_vertex = self.projection_transform * transformed_vertex
+                projected_vertex = self.projection_transform * self.viewing_transform * self.transformation_stack[-1] \
+                                   * original_vertex
 
                 if projected_vertex.w != 0:
                     projected_vertex.x /= projected_vertex.w
                     projected_vertex.y /= projected_vertex.w
                     projected_vertex.z /= projected_vertex.w
+
+                
 
                 vertices[i].x = int(projected_vertex.x)
                 vertices[i].y = int(projected_vertex.y)
@@ -311,25 +320,25 @@ class CGIengine:
 
             self.rasterizeTriangle(vertices[0], vertices[1], vertices[2])
 
-            # # get vertices
-            # p0, p1, p2 = glm.vec3(vertices[0].x, vertices[0].y, vertices[0].z), \
-            #              glm.vec3(vertices[1].x, vertices[1].y, vertices[1].z), \
-            #              glm.vec3(vertices[2].x, vertices[2].y, vertices[2].z)
-            #
-            # E1, E2 = p1 - p0, p2 - p0
-            #
-            # # calculate normal vector for z-axis
-            # cross_product_x = E1[1] * E2[2] - E1[2] * E2[1]
-            # cross_product_y = E1[2] * E2[0] - E1[0] * E2[2]
-            # cross_product_z = E1[0] * E2[1] - E1[1] * E2[0]
-            #
-            # # skip rear-facing triangles
-            # if cross_product_z < 0:
-            #     continue
-            #
-            # self.rasterizeLine(vertices[0].x, vertices[0].y, vertices[1].x, vertices[1].y, outr, outg, outb)
-            # self.rasterizeLine(vertices[1].x, vertices[1].y, vertices[2].x, vertices[2].y, outr, outg, outb)
-            # self.rasterizeLine(vertices[2].x, vertices[2].y, vertices[0].x, vertices[0].y, outr, outg, outb)
+            # get vertices
+            p0, p1, p2 = glm.vec3(vertices[0].x, vertices[0].y, vertices[0].z), \
+                         glm.vec3(vertices[1].x, vertices[1].y, vertices[1].z), \
+                         glm.vec3(vertices[2].x, vertices[2].y, vertices[2].z)
+
+            E1, E2 = p1 - p0, p2 - p0
+
+            # calculate normal vector for z-axis
+            cross_product_x = E1[1] * E2[2] - E1[2] * E2[1]
+            cross_product_y = E1[2] * E2[0] - E1[0] * E2[2]
+            cross_product_z = E1[0] * E2[1] - E1[1] * E2[0]
+
+            # skip rear-facing triangles
+            if cross_product_z < 0:
+                continue
+
+            self.rasterizeLine(vertices[0].x, vertices[0].y, vertices[1].x, vertices[1].y, outr, outg, outb)
+            self.rasterizeLine(vertices[1].x, vertices[1].y, vertices[2].x, vertices[2].y, outr, outg, outb)
+            self.rasterizeLine(vertices[2].x, vertices[2].y, vertices[0].x, vertices[0].y, outr, outg, outb)
 
     # draw wireframes for the object
     def drawTrianglesWireframe(self, vertex_pos, indices, r, g, b):
@@ -369,7 +378,7 @@ class CGIengine:
             self.rasterizeLine(vertices[2].x, vertices[2].y, vertices[0].x, vertices[0].y, r, g, b)
 
     def setCamera(self, eye, lookAt, up):
-        self.view_matrix = glm.lookAt(glm.vec3(eye), glm.vec3(lookAt), glm.vec3(up))
+        self.viewing_transform = glm.lookAtRH(eye, lookAt, up)
 
     def setOrtho(self, l, r, b, t, n, f):
         self.projection_transform = glm.orthoRH_NO(l, r, b, t, n, f)
@@ -377,5 +386,5 @@ class CGIengine:
     def frustumPerspective(self, l, r, b, t, n, f):
         self.projection_transform = glm.frustumRH_NO(l, r, b, t, n, f)
 
-    def fovPerspective(self, fov, width, height, near, far):
-        self.projection_transform = glm.perspectiveRH_NO(glm.radians(fov), width / height, near, far)
+    # def fovPerspective(self, fov, aspect, near, far):
+    #     self.projection_transform = glm.perspectiveRH_NO(glm.radians(fov), aspect, near, far)
