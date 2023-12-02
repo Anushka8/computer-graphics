@@ -23,6 +23,10 @@ class CGIengine:
         self.projection_transform = glm.mat4(1.0)  # projection matrix Assignment 7
         self.z_buffer = [[float('inf') for _ in range(self.w_width)] for _ in range(self.w_height)]
 
+        self.view_port = glm.mat4()
+        self.view_port = glm.translate(self.view_port, glm.vec3(400, 400, 400))
+        self.view_port = glm.scale(self.view_port, glm.vec3(400, 400, 400))
+
     def set_dot(self, x_co, y_co, R, G, B):
         for x in range(5):
             for y in range(5):
@@ -206,17 +210,19 @@ class CGIengine:
     # multiply translate matrix to current model transform
     def translate(self, x, y, z):
         # translate along x, y and z axes
-        self.model_matrix[3][0] += x
-        self.model_matrix[3][1] += y
-        self.model_matrix[3][2] += z
-        self.transformation_stack[-1] = self.model_matrix * self.transformation_stack[-1]
+        # self.model_matrix[3][0] += x
+        # self.model_matrix[3][1] += y
+        # self.model_matrix[3][2] += z
+        # self.transformation_stack[-1] = self.model_matrix * self.transformation_stack[-1]
+        self.transformation_stack[-1] = glm.translate(self.transformation_stack[-1], glm.vec3(x, y, z))
 
     # multiply scale matrix to current model transform
     def scale(self, x, y, z):
-        scale_mat = glm.mat4(1.0)
-        scaling_matrix = glm.scale(scale_mat, glm.vec3(x, y, z))
+        # scale_mat = glm.mat4(1.0)
+        # scaling_matrix = glm.scale(scale_mat, glm.vec3(x, y, z))
         # self.model_matrix = self.model_matrix * scaling_matrix
-        self.transformation_stack[-1] = scaling_matrix * self.transformation_stack[-1]
+        # self.transformation_stack[-1] = scaling_matrix * self.transformation_stack[-1]
+        self.transformation_stack[-1] = glm.scale(self.transformation_stack[-1], glm.vec3(x, y, z))
 
     # rotate object along x-axis
     def rotatex(self, angle):
@@ -225,8 +231,8 @@ class CGIengine:
         rotation_matrix[1][2] = np.sin(np.deg2rad(angle))
         rotation_matrix[2][1] = -np.sin(np.deg2rad(angle))
         rotation_matrix[2][2] = np.cos(np.deg2rad(angle))
-        self.model_matrix = self.model_matrix * rotation_matrix
-        self.transformation_stack[-1] = self.model_matrix * self.transformation_stack[-1]
+        # self.model_matrix = self.model_matrix * rotation_matrix
+        self.transformation_stack[-1] = self.transformation_stack[-1] * rotation_matrix
 
     # rotate object along y-axis
     def rotatey(self, angle):
@@ -289,13 +295,13 @@ class CGIengine:
                 # transformed_vertex = self.view_matrix * self.normalization_matrix * self.model_matrix *
                 # original_vertex \ * self.viewing_transform
 
-                projected_vertex = self.view_matrix * self.projection_transform * self.viewing_transform * \
+                projected_vertex = self.view_port * self.projection_transform * self.viewing_transform * \
                                    self.transformation_stack[-1] * original_vertex
 
-                # if projected_vertex.w != 0:
-                #     projected_vertex.x /= projected_vertex.w
-                #     projected_vertex.y /= projected_vertex.w
-                #     projected_vertex.z /= projected_vertex.w
+                if projected_vertex.w != 0:
+                    projected_vertex.x /= projected_vertex.w
+                    projected_vertex.y /= projected_vertex.w
+                    projected_vertex.z /= projected_vertex.w
                 #
                 # original_vertex = glm.vec3(projected_vertex.x, projected_vertex.y, 1)
                 #
