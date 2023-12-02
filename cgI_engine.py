@@ -23,6 +23,10 @@ class CGIengine:
         self.projection_transform = glm.mat4(1.0)  # projection matrix Assignment 7
         self.z_buffer = [[float('inf') for _ in range(self.w_width)] for _ in range(self.w_height)]
 
+        self.view_port = glm.mat4()
+        self.view_port = glm.translate(self.view_port, glm.vec3(400, 400, 400))
+        self.view_port = glm.scale(self.view_port, glm.vec3(400, 400, 400))
+
     def set_dot(self, x_co, y_co, R, G, B):
         for x in range(5):
             for y in range(5):
@@ -43,20 +47,6 @@ class CGIengine:
                 x0 += dx
                 y0 = math.ceil(m * x0 + b)
                 self.set_dot(x0, y0, R, G, B)
-
-    # go is called on every update of the window display loop
-    # have your engine draw stuff in the window.
-    def go(self):
-        if self.keypressed == 1:
-            # default scene
-            self.default_action()
-
-        if self.keypressed == 2:
-            # add you own unique scene here
-            self.win.clearFB(0, 0, 0)
-
-            # push the window's framebuffer to the window
-        self.win.applyFB()
 
     # Assignment 2 - Rasterize Line
     def rasterizeLine(self, x0, y0, x1, y1, r, g, b):
@@ -209,14 +199,6 @@ class CGIengine:
     def edgeFunction(self, P0, P1, x, y):
         return (x - P0.x) * (P1.y - P0.y) - (y - P0.y) * (P1.x - P0.x)
 
-    def keyboard(self, key):
-        if key == '1':
-            self.keypressed = 1
-            self.go()
-        if key == '2':
-            self.keypressed = 2
-            self.go()
-
     # Assignment 5 - The Transformer
     # set model transform matrix to identity
 
@@ -228,15 +210,19 @@ class CGIengine:
     # multiply translate matrix to current model transform
     def translate(self, x, y, z):
         # translate along x, y and z axes
-        self.model_matrix[3][0] += x
-        self.model_matrix[3][1] += y
-        self.model_matrix[3][2] += z
+        # self.model_matrix[3][0] += x
+        # self.model_matrix[3][1] += y
+        # self.model_matrix[3][2] += z
+        # self.transformation_stack[-1] = self.model_matrix * self.transformation_stack[-1]
+        self.transformation_stack[-1] = glm.translate(self.transformation_stack[-1], glm.vec3(x, y, z))
 
     # multiply scale matrix to current model transform
     def scale(self, x, y, z):
-        scale_mat = glm.mat4(1.0)
-        scaling_matrix = glm.scale(scale_mat, glm.vec3(x, y, z))
-        self.model_matrix = self.model_matrix * scaling_matrix
+        # scale_mat = glm.mat4(1.0)
+        # scaling_matrix = glm.scale(scale_mat, glm.vec3(x, y, z))
+        # self.model_matrix = self.model_matrix * scaling_matrix
+        # self.transformation_stack[-1] = scaling_matrix * self.transformation_stack[-1]
+        self.transformation_stack[-1] = glm.scale(self.transformation_stack[-1], glm.vec3(x, y, z))
 
     # rotate object along x-axis
     def rotatex(self, angle):
@@ -245,7 +231,8 @@ class CGIengine:
         rotation_matrix[1][2] = np.sin(np.deg2rad(angle))
         rotation_matrix[2][1] = -np.sin(np.deg2rad(angle))
         rotation_matrix[2][2] = np.cos(np.deg2rad(angle))
-        self.model_matrix = self.model_matrix * rotation_matrix
+        # self.model_matrix = self.model_matrix * rotation_matrix
+        self.transformation_stack[-1] = self.transformation_stack[-1] * rotation_matrix
 
     # rotate object along y-axis
     def rotatey(self, angle):
@@ -254,7 +241,8 @@ class CGIengine:
         rotation_matrix[0][2] = -np.sin(np.deg2rad(angle))
         rotation_matrix[2][0] = np.sin(np.deg2rad(angle))
         rotation_matrix[2][2] = np.cos(np.deg2rad(angle))
-        self.model_matrix = self.model_matrix * rotation_matrix
+        # self.model_matrix = self.model_matrix * rotation_matrix
+        self.transformation_stack[-1] = self.transformation_stack[-1] * rotation_matrix
 
     # rotate object along z-axis
     def rotatez(self, angle):
@@ -263,7 +251,8 @@ class CGIengine:
         rotation_matrix[0][1] = np.sin(np.deg2rad(angle))
         rotation_matrix[1][0] = -np.sin(np.deg2rad(angle))
         rotation_matrix[1][1] = np.cos(np.deg2rad(angle))
-        self.model_matrix = self.model_matrix * rotation_matrix
+        # self.model_matrix = self.model_matrix * rotation_matrix
+        self.transformation_stack[-1] = self.transformation_stack[-1] * rotation_matrix
 
     # get the normalization window
     def defineClipWindow(self, t, b, r, l):
@@ -271,6 +260,7 @@ class CGIengine:
         self.normalization_matrix[1][1] = (2 / (t - b))
         self.normalization_matrix[2][0] = ((-2 * l) / (r - l)) - 1
         self.normalization_matrix[2][1] = ((-2 * b) / (t - b)) - 1
+        self.transformation_stack[-1] = self.normalization_matrix * self.transformation_stack[-1]
 
     # get the viewing window
     def defineViewWindow(self, t, b, r, l):
@@ -278,6 +268,7 @@ class CGIengine:
         self.view_matrix[1][1] = ((t - b) / 2)
         self.view_matrix[2][0] = ((r + l) / 2)
         self.view_matrix[2][1] = ((t + b) / 2)
+        self.transformation_stack[-1] = self.view_matrix * self.transformation_stack[-1]
 
     # push object to the stack
     def pushTransform(self):
@@ -304,25 +295,25 @@ class CGIengine:
                 # transformed_vertex = self.view_matrix * self.normalization_matrix * self.model_matrix *
                 # original_vertex \ * self.viewing_transform
 
-                projected_vertex = self.projection_transform * self.viewing_transform * self.transformation_stack[-1] \
-                                   * original_vertex
+                projected_vertex = self.view_port * self.projection_transform * self.viewing_transform * \
+                                   self.transformation_stack[-1] * original_vertex
 
                 if projected_vertex.w != 0:
                     projected_vertex.x /= projected_vertex.w
                     projected_vertex.y /= projected_vertex.w
                     projected_vertex.z /= projected_vertex.w
+                #
+                # original_vertex = glm.vec3(projected_vertex.x, projected_vertex.y, 1)
+                #
+                # final_transform = self.view_matrix * original_vertex
 
-                original_vertex = glm.vec3(projected_vertex.x, projected_vertex.y, 1)
+                vertices[i].x = int(projected_vertex.x)
+                vertices[i].y = int(projected_vertex.y)
+                vertices[i].z = int(projected_vertex.z)
 
-                final_transform = self.view_matrix * original_vertex
-
-                # vertices[i].x = int(projected_vertex.x)
-                # vertices[i].y = int(projected_vertex.y)
-                # vertices[i].z = int(projected_vertex.z)
-
-                vertices[i].x = int(final_transform.x)
-                vertices[i].y = int(final_transform.y)
-                vertices[i].z = int(final_transform.z)
+                # vertices[i].x = int(final_transform.x)
+                # vertices[i].y = int(final_transform.y)
+                # vertices[i].z = int(final_transform.z)
 
             self.rasterizeTriangle(vertices[0], vertices[1], vertices[2])
 
@@ -394,3 +385,25 @@ class CGIengine:
 
     # def fovPerspective(self, fov, aspect, near, far):
     #     self.projection_transform = glm.perspectiveRH_NO(glm.radians(fov), aspect, near, far)
+
+    def keyboard(self, key):
+        if key == '1':
+            self.keypressed = 1
+            self.go()
+        if key == '2':
+            self.keypressed = 2
+            self.go()
+
+    # go is called on every update of the window display loop
+    # have your engine draw stuff in the window.
+    def go(self):
+        if self.keypressed == 1:
+            # default scene
+            self.default_action()
+
+        if self.keypressed == 2:
+            # add you own unique scene here
+            self.win.clearFB(0, 0, 0)
+
+            # push the window's framebuffer to the window
+        self.win.applyFB()

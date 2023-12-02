@@ -14,9 +14,7 @@ tris_idx = [0, 2, 1]
 def default_action():
     # clear the FB
     myEngine.win.clearFB(0, 0, 0)
-    myEngine.defineViewWindow(700, 0, 700, 0)
-    # myEngine.translate(300, 400, 0)
-    # myEngine.scale(50, 50, 1)
+    myEngine.defineClipWindow(3.0, -3.0, 3.0, -3.0)
 
     # set up your camera
     myEngine.setCamera([0.0, 0.0, 5.0], [0, 0, 0], [0, 1, 0])

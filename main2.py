@@ -46,8 +46,8 @@ def drawPedistal(r, g, b):
 def default_action():
     # clear the FB
     myEngine.win.clearFB(0, 0, 0)
-    myEngine.defineViewWindow(700, 0, 700, 0)
-    # myEngine.defineClipWindow (3.0, -3.0, 3.0, -3.0)
+    # myEngine.defineViewWindow(700, 0, 700, 0)
+    myEngine.defineClipWindow (1.0, -1.0, 1.0, -1.0)
 
     # set up your camera
 
