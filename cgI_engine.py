@@ -27,6 +27,13 @@ class CGIengine:
         self.view_port = glm.translate(self.view_port, glm.vec3(400, 400, 400))
         self.view_port = glm.scale(self.view_port, glm.vec3(400, 400, 400))
 
+        self.ambient_color = glm.vec3(0.0, 0.0, 0.0)
+        self.diffuse_color = glm.vec3(0.0, 0.0, 0.0)
+        self.specular_color = glm.vec3(0.0, 0.0, 0.0)
+        self.light_position = glm.vec3(0.0, 0.0, 0.0)
+        self.light_color = glm.vec3(0.0, 0.0, 0.0)
+        self.eye = glm.vec3(0.0, 0.0, 0.0)
+
     def set_dot(self, x_co, y_co, R, G, B):
         for x in range(5):
             for y in range(5):
@@ -292,9 +299,6 @@ class CGIengine:
             for i in range(len(vertices)):
                 original_vertex = glm.vec4(vertices[i].x, vertices[i].y, vertices[i].z, 1)
 
-                # transformed_vertex = self.view_matrix * self.normalization_matrix * self.model_matrix *
-                # original_vertex \ * self.viewing_transform
-
                 projected_vertex = self.view_port * self.projection_transform * self.viewing_transform * \
                                    self.transformation_stack[-1] * original_vertex
 
@@ -302,18 +306,10 @@ class CGIengine:
                     projected_vertex.x /= projected_vertex.w
                     projected_vertex.y /= projected_vertex.w
                     projected_vertex.z /= projected_vertex.w
-                #
-                # original_vertex = glm.vec3(projected_vertex.x, projected_vertex.y, 1)
-                #
-                # final_transform = self.view_matrix * original_vertex
 
                 vertices[i].x = int(projected_vertex.x)
                 vertices[i].y = int(projected_vertex.y)
                 vertices[i].z = int(projected_vertex.z)
-
-                # vertices[i].x = int(final_transform.x)
-                # vertices[i].y = int(final_transform.y)
-                # vertices[i].z = int(final_transform.z)
 
             self.rasterizeTriangle(vertices[0], vertices[1], vertices[2])
 
@@ -376,6 +372,7 @@ class CGIengine:
 
     def setCamera(self, eye, lookAt, up):
         self.viewing_transform = glm.lookAtRH(eye, lookAt, up)
+        self.eye = eye
 
     def setOrtho(self, l, r, b, t, n, f):
         self.projection_transform = glm.orthoRH_NO(l, r, b, t, n, f)
@@ -383,8 +380,83 @@ class CGIengine:
     def setFrustum(self, l, r, b, t, n, f):
         self.projection_transform = glm.frustumRH_NO(l, r, b, t, n, f)
 
-    # def fovPerspective(self, fov, aspect, near, far):
-    #     self.projection_transform = glm.perspectiveRH_NO(glm.radians(fov), aspect, near, far)
+    def setLight(self, pos, C):
+        self.light_position = glm.vec3(pos[0], pos[1], pos[2])
+        self.light_color = glm.vec3(C[0], C[1], C[2])
+
+    def setAmbient(self, C):
+        self.ambient_color = glm.vec3(C[0], C[1], C[2])
+
+    def setSpecular(self, normal, pos, C, ks, exp):
+        light_direction = glm.normalize(pos - normal)
+        specular_light = glm.dot(normal, light_direction)
+        return ks * specular_light ** exp
+
+    def setDiffuse(self, normal, pos, C, kd):
+        light_direction = glm.normalize(pos - normal)
+        diffuse_light = glm.dot(normal, light_direction)
+        return kd * diffuse_light
+
+    def drawTrianglesPhong(self, vertex_pos, indices, normals, ocolor, scolor, k, exponent, doGouraud):
+        for ind in range(0, len(indices), 3):
+            vertices = []
+            # normal_values = []
+            for i in indices[ind: ind + 3]:
+                x, y, z = vertex_pos[3 * i], vertex_pos[3 * i + 1], vertex_pos[3 * i + 2]
+                nx, ny, nz = normals[3 * i], vertex_pos[3 * i + 1], vertex_pos[3 * i + 2]
+                vertices.append(Vertex(x, y, z, ocolor[0], ocolor[1], ocolor[2], nx, ny, nz))
+                # normal_values.append(glm.vec3(n0, n1, n2))
+
+            for i in range(len(vertices)):
+                original_vertex = glm.vec4(vertices[i].x, vertices[i].y, vertices[i].z, 1)
+
+                projected_vertex = self.view_port * self.projection_transform * self.viewing_transform * \
+                                   self.transformation_stack[-1] * original_vertex
+
+                if projected_vertex.w != 0:
+                    projected_vertex.x /= projected_vertex.w
+                    projected_vertex.y /= projected_vertex.w
+                    projected_vertex.z /= projected_vertex.w
+
+                vertices[i].x = int(projected_vertex.x)
+                vertices[i].y = int(projected_vertex.y)
+                vertices[i].z = int(projected_vertex.z)
+
+                # Calculate lighting using the Phong reflection model
+                # view_vector = glm.normalize(glm.vec3(0, 0, -1))
+                view_vector = glm.normalize(
+                    self.eye - glm.normalize(glm.vec3(vertices[i].x, vertices[i].y, vertices[i].z)))
+
+                light_dir = glm.normalize(
+                    self.light_position - glm.normalize(glm.vec3(vertices[i].x, vertices[i].y, vertices[i].z)))
+
+                vec = glm.normalize(glm.vec4(vertices[i].x, vertices[i].y, vertices[i].z, 1))
+                normal = glm.normalize(glm.vec3(vertices[i].nx, vertices[i].ny, vertices[i].nz))
+                new_normal = glm.normalize(glm.transpose(glm.inverse(self.model_matrix)) * normal)
+
+                light_vector = glm.normalize(self.light_position - glm.vec3(vec[0], vec[1], vec[2]))
+                reflect_vector = glm.normalize(glm.reflect(-light_dir, new_normal))
+
+                # ambient component
+                ambient = ocolor * self.ambient_color
+                cos_theta = glm.dot(new_normal, light_vector) if glm.dot(new_normal, light_vector) > 0 else 0
+
+                # diffuse component
+                diffuse = (self.light_color * ocolor) * cos_theta
+                cos_alpha = glm.dot(reflect_vector, view_vector) if glm.dot(reflect_vector, view_vector) > 0 else 0
+
+                # specular component
+                specular = self.light_color * scolor * pow(cos_alpha, exponent)
+
+                # Combine lighting components
+                if doGouraud:
+                    final_color = k[0] * ambient + k[1] * diffuse + k[2] * specular
+
+                vertices[i].r = final_color[0] * 255
+                vertices[i].g = final_color[1] * 255
+                vertices[i].b = final_color[2] * 255
+
+            self.rasterizeTriangle(vertices[0], vertices[1], vertices[2])
 
     def keyboard(self, key):
         if key == '1':
