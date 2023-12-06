@@ -34,6 +34,10 @@ class CGIengine:
         self.light_color = glm.vec3(0.0, 0.0, 0.0)
         self.eye = glm.vec3(0.0, 0.0, 0.0)
 
+        self.lambda0 = None
+        self.lambda1 = None
+        self.lambda2 = None
+
     def set_dot(self, x_co, y_co, R, G, B):
         for x in range(5):
             for y in range(5):
@@ -387,25 +391,14 @@ class CGIengine:
     def setAmbient(self, C):
         self.ambient_color = glm.vec3(C[0], C[1], C[2])
 
-    def setSpecular(self, normal, pos, C, ks, exp):
-        light_direction = glm.normalize(pos - normal)
-        specular_light = glm.dot(normal, light_direction)
-        return ks * specular_light ** exp
-
-    def setDiffuse(self, normal, pos, C, kd):
-        light_direction = glm.normalize(pos - normal)
-        diffuse_light = glm.dot(normal, light_direction)
-        return kd * diffuse_light
-
     def drawTrianglesPhong(self, vertex_pos, indices, normals, ocolor, scolor, k, exponent, doGouraud):
         for ind in range(0, len(indices), 3):
             vertices = []
-            # normal_values = []
+
             for i in indices[ind: ind + 3]:
                 x, y, z = vertex_pos[3 * i], vertex_pos[3 * i + 1], vertex_pos[3 * i + 2]
                 nx, ny, nz = normals[3 * i], vertex_pos[3 * i + 1], vertex_pos[3 * i + 2]
                 vertices.append(Vertex(x, y, z, ocolor[0], ocolor[1], ocolor[2], nx, ny, nz))
-                # normal_values.append(glm.vec3(n0, n1, n2))
 
             for i in range(len(vertices)):
                 original_vertex = glm.vec4(vertices[i].x, vertices[i].y, vertices[i].z, 1)
@@ -423,7 +416,6 @@ class CGIengine:
                 vertices[i].z = int(projected_vertex.z)
 
                 # Calculate lighting using the Phong reflection model
-                # view_vector = glm.normalize(glm.vec3(0, 0, -1))
                 view_vector = glm.normalize(
                     self.eye - glm.normalize(glm.vec3(vertices[i].x, vertices[i].y, vertices[i].z)))
 
@@ -455,6 +447,23 @@ class CGIengine:
                 vertices[i].r = final_color[0] * 255
                 vertices[i].g = final_color[1] * 255
                 vertices[i].b = final_color[2] * 255
+
+                # Calculate light vectors at vertices
+                L0 = glm.normalize(
+                    self.light_position - glm.vec3(vertices[0].x,
+                                                   vertices[0].y,
+                                                   vertices[0].z))
+                L1 = glm.normalize(
+                    self.light_position - glm.vec3(vertices[1].x,
+                                                   vertices[1].y,
+                                                   vertices[1].z))
+                L2 = glm.normalize(
+                    self.light_position - glm.vec3(vertices[2].x,
+                                                   vertices[2].y,
+                                                   vertices[2].z))
+
+                # Interpolate light vectors
+                interpolated_L = glm.normalize(self.lambda0 * L0 + self.lambda1 * L1 + self.lambda2 * L2)
 
             self.rasterizeTriangle(vertices[0], vertices[1], vertices[2])
 
