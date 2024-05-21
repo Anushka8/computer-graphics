@@ -5,6 +5,7 @@ import numpy as np
 import glm
 import math
 from vertex import *
+from PIL import Image
 
 
 class CGIengine:
@@ -168,7 +169,7 @@ class CGIengine:
 
             self.rasterizeTriangle(vertices[0], vertices[1], vertices[2])
 
-    def rasterizeTriangle(self, P0, P1, P2):
+    def rasterizeTriangle(self, P0, P1, P2, im):
         # get minimum and max of x and y-axis
         x_min = min(P0.x, P1.x, P2.x)
         x_max = max(P0.x, P1.x, P2.x)
@@ -196,6 +197,21 @@ class CGIengine:
                     # Calculate interpolated depth
                     interpolated_depth = lambda0 * P0.z + lambda1 * P1.z + lambda2 * P2.z
 
+                    # Calculate interpolated texture co-ordinates
+                    tex_u = lambda0 * P0.u + lambda1 * P1.u + lambda2 * P2.u
+                    tex_v = lambda0 * P0.v + lambda1 * P1.v + lambda2 * P2.v
+
+                    if im:
+                        tex_color = self.texture(tex_u, tex_v, im)
+                    else:
+                        tex_color = self.texture_procedural(tex_u, tex_v)
+
+                    interpolated_normal = glm.vec3(
+                        lambda0 * P0.nx + lambda1 * P1.nx + lambda2 * P2.nx,
+                        lambda0 * P0.ny + lambda1 * P1.ny + lambda2 * P2.ny,
+                        lambda0 * P0.nz + lambda1 * P1.nz + lambda2 * P2.nz,
+                    )
+
                     # Depth test
                     if interpolated_depth < self.z_buffer[x][y]:
                         self.z_buffer[x][y] = interpolated_depth
@@ -205,7 +221,12 @@ class CGIengine:
                         C1 = lambda0 * P0.g + lambda1 * P1.g + lambda2 * P2.g
                         C2 = lambda0 * P0.b + lambda1 * P1.b + lambda2 * P2.b
 
-                        self.win.set_pixel(x, y, C0, C1, C2)
+                        pixel_color = (C0 * tex_color[0],
+                                       C1 * tex_color[1],
+                                       C2 * tex_color[2]
+                                       )
+
+                        self.win.set_pixel(x, y, pixel_color[0], pixel_color[1], pixel_color[2])
 
     def edgeFunction(self, P0, P1, x, y):
         return (x - P0.x) * (P1.y - P0.y) - (y - P0.y) * (P1.x - P0.x)
@@ -217,22 +238,15 @@ class CGIengine:
     def clearModelTransform(self):
         # initialize the model matrix to identity
         self.model_matrix = glm.mat4(1.0)
+        self.transformation_stack[-1] = glm.mat4(1.0)
 
     # multiply translate matrix to current model transform
     def translate(self, x, y, z):
         # translate along x, y and z axes
-        # self.model_matrix[3][0] += x
-        # self.model_matrix[3][1] += y
-        # self.model_matrix[3][2] += z
-        # self.transformation_stack[-1] = self.model_matrix * self.transformation_stack[-1]
         self.transformation_stack[-1] = glm.translate(self.transformation_stack[-1], glm.vec3(x, y, z))
 
     # multiply scale matrix to current model transform
     def scale(self, x, y, z):
-        # scale_mat = glm.mat4(1.0)
-        # scaling_matrix = glm.scale(scale_mat, glm.vec3(x, y, z))
-        # self.model_matrix = self.model_matrix * scaling_matrix
-        # self.transformation_stack[-1] = scaling_matrix * self.transformation_stack[-1]
         self.transformation_stack[-1] = glm.scale(self.transformation_stack[-1], glm.vec3(x, y, z))
 
     # rotate object along x-axis
@@ -242,7 +256,6 @@ class CGIengine:
         rotation_matrix[1][2] = np.sin(np.deg2rad(angle))
         rotation_matrix[2][1] = -np.sin(np.deg2rad(angle))
         rotation_matrix[2][2] = np.cos(np.deg2rad(angle))
-        # self.model_matrix = self.model_matrix * rotation_matrix
         self.transformation_stack[-1] = self.transformation_stack[-1] * rotation_matrix
 
     # rotate object along y-axis
@@ -252,7 +265,6 @@ class CGIengine:
         rotation_matrix[0][2] = -np.sin(np.deg2rad(angle))
         rotation_matrix[2][0] = np.sin(np.deg2rad(angle))
         rotation_matrix[2][2] = np.cos(np.deg2rad(angle))
-        # self.model_matrix = self.model_matrix * rotation_matrix
         self.transformation_stack[-1] = self.transformation_stack[-1] * rotation_matrix
 
     # rotate object along z-axis
@@ -262,7 +274,6 @@ class CGIengine:
         rotation_matrix[0][1] = np.sin(np.deg2rad(angle))
         rotation_matrix[1][0] = -np.sin(np.deg2rad(angle))
         rotation_matrix[1][1] = np.cos(np.deg2rad(angle))
-        # self.model_matrix = self.model_matrix * rotation_matrix
         self.transformation_stack[-1] = self.transformation_stack[-1] * rotation_matrix
 
     # get the normalization window
@@ -466,6 +477,76 @@ class CGIengine:
                 interpolated_L = glm.normalize(self.lambda0 * L0 + self.lambda1 * L1 + self.lambda2 * L2)
 
             self.rasterizeTriangle(vertices[0], vertices[1], vertices[2])
+
+    def drawTrianglesTextures(self, vertex_pos, indices, uvs, im):
+        for ind in range(0, len(indices), 3):
+            vertices = []
+            for i in indices[ind: ind + 3]:
+                x, y, z = vertex_pos[3 * i], vertex_pos[3 * i + 1], vertex_pos[3 * i + 2]
+                u, v = uvs[2 * i], uvs[2 * i + 1]
+                vertices.append(Vertex(x, y, z, 1, 1, 1, 0, 0, 0, u, v))
+
+            for i in range(len(vertices)):
+                original_vertex = glm.vec4(vertices[i].x, vertices[i].y, vertices[i].z, 1)
+
+                projected_vertex = self.view_port * self.projection_transform * self.viewing_transform * \
+                                   self.transformation_stack[-1] * original_vertex
+
+                if projected_vertex.w != 0:
+                    projected_vertex.x /= projected_vertex.w
+                    projected_vertex.y /= projected_vertex.w
+                    projected_vertex.z /= projected_vertex.w
+
+                vertices[i].x = int(projected_vertex.x)
+                vertices[i].y = int(projected_vertex.y)
+                vertices[i].z = int(projected_vertex.z)
+
+            self.rasterizeTriangle(vertices[0], vertices[1], vertices[2], im)
+
+    def texture(self, u, v, im):
+        width, height = im.size
+
+        u = max(0, min(u, 1))
+        v = max(0, min(v, 1))
+
+        x = int(u * (width - 1))
+        y = int(v * (height - 1))
+
+        r, g, b = im.getpixel((x,y))
+        return r, g, b
+
+    def drawTrianglesMyTextures(self, vertex_pos, indices, uvs):
+        for ind in range(0, len(indices), 3):
+            vertices = []
+            for i in indices[ind: ind + 3]:
+                x, y, z = vertex_pos[3 * i], vertex_pos[3 * i + 1], vertex_pos[3 * i + 2]
+                u, v = uvs[2 * i], uvs[2 * i + 1]
+                vertices.append(Vertex(x, y, z, 1, 1, 1, 0, 0, 0, u, v))
+
+            for i in range(len(vertices)):
+                original_vertex = glm.vec4(vertices[i].x, vertices[i].y, vertices[i].z, 1)
+
+                projected_vertex = self.view_port * self.projection_transform * self.viewing_transform * \
+                                   self.transformation_stack[-1] * original_vertex
+
+                if projected_vertex.w != 0:
+                    projected_vertex.x /= projected_vertex.w
+                    projected_vertex.y /= projected_vertex.w
+                    projected_vertex.z /= projected_vertex.w
+
+                vertices[i].x = int(projected_vertex.x)
+                vertices[i].y = int(projected_vertex.y)
+                vertices[i].z = int(projected_vertex.z)
+
+            self.rasterizeTriangle(vertices[0], vertices[1], vertices[2], None)
+
+    def texture_procedural(self, u, v):
+        scale = 20
+        value = np.sin(u * scale) * np.sin(v * scale)
+        normalized_value = (value + 1) / 2  # Normalize to [0, 1]
+
+        # Assuming image is a 3-channel (RGB) image
+        return int(normalized_value * 255), 23, 23
 
     def keyboard(self, key):
         if key == '1':
