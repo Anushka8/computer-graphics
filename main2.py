@@ -2,67 +2,42 @@ from rit_window import *
 from cgI_engine import *
 from vertex import *
 from clipper import *
-from shapes import *
+from shapes_new import *
 import numpy as np
-
-
-def drawPedistal(r, g, b):
-    # pole
-    myEngine.pushTransform()
-    myEngine.scale(0.6, 2.0, 0.6)
-    myEngine.drawTrianglesC(cylinder, cylinder_idx, 255, 255, 0, 255, 0, 0)
-    myEngine.popTransform()
-
-    # top
-    myEngine.pushTransform()
-    myEngine.translate(0.0, 1.0, 0.0)
-    myEngine.pushTransform()
-    myEngine.scale(0.9, 0.1, 0.9)
-    myEngine.drawTrianglesC(cube, cube_idx, 255, 255, 0, 255, 0, 0)
-    myEngine.popTransform()
-
-    # showcaae cube
-    myEngine.pushTransform()
-    myEngine.translate(0.0, 0.45, 0.0)
-    myEngine.pushTransform()
-    myEngine.scale(0.4, 0.4, 0.4)
-    myEngine.rotatex(45.0)
-    myEngine.rotatey(45.0)
-    myEngine.drawTrianglesC(cube, cube_idx, r, g, b, 0, 0, 0)
-    myEngine.popTransform()
-    myEngine.popTransform()
-    myEngine.popTransform()
-
-    # bottom
-    myEngine.pushTransform()
-    myEngine.translate(0.0, -1.0, 0.0)
-    myEngine.pushTransform()
-    myEngine.scale(0.9, 0.1, 0.9)
-    myEngine.drawTrianglesC(cube, cube_idx, 255, 255, 0, 255, 0, 0)
-    myEngine.popTransform()
-    myEngine.popTransform()
+from PIL import Image
 
 
 def default_action():
     # clear the FB
-    myEngine.win.clearFB(0, 0, 0)
-    # myEngine.defineViewWindow(700, 0, 700, 0)
-    myEngine.defineClipWindow (1.0, -1.0, 1.0, -1.0)
+    myEngine.win.clearFB(.15, .15, .45)
 
     # set up your camera
+    myEngine.setCamera(glm.vec3([0.0, 0.0, 2.0]), glm.vec3([0, 0, 20]), glm.vec3([0, 1, 0]))
+    myEngine.setOrtho(-3.0, 3.0, -3.0, 3.0, -3.0, 3.0)
 
-    myEngine.setCamera(glm.vec3([0.0, 2.0, 4.0]), glm.vec3([0, 0, 0]), glm.vec3([0, 1, 0]))
+    # get your texture image
+    im = Image.open("1_earth_16k.jpg")
 
-    myEngine.setFrustum(-2.0, 2.0, -2.0, 2.0, 3.0, 10.0)
+    # draw a textured cube
+    myEngine.translate(1.0, 1.0, 0.0)
+    myEngine.rotatey(30)
+    myEngine.rotatex(30)
+    myEngine.scale(1.2, 1.2, 1.2)
+    myEngine.drawTrianglesMyTextures(cube_new, cube_new_idx, cube_new_uv)
 
-    # position
-    myEngine.pushTransform()
-    myEngine.translate(2, 0, -3.0)
-    drawPedistal(0, 255, 0)
+    # draw a textured sphere
+    myEngine.clearModelTransform()
+    myEngine.translate(-1.5, 1.0, 0.0)
+    myEngine.scale(1.5, 1.5, 1.5)
+    myEngine.drawTrianglesMyTextures(sphere_new, sphere_new_idx, sphere_new_uv)
 
-    myEngine.pushTransform()
-    myEngine.translate(-2, 0, -5.0)
-    drawPedistal(0, 0, 255)
+    # draw a textured cylinder
+    myEngine.clearModelTransform()
+    myEngine.translate(0.0, -1.0, 0.0)
+    myEngine.rotatey(30)
+    myEngine.rotatex(-30)
+    myEngine.scale(1.5, 1.5, 1.5)
+    myEngine.drawTrianglesMyTextures(cylinder_new, cylinder_new_idx, cylinder_new_uv)
 
 
 window = RitWindow(800, 800)
